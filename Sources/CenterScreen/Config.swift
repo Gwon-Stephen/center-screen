@@ -26,8 +26,8 @@ struct HotkeyConfig: Codable, Equatable {
         return parts.joined()
     }
 
-    /// ⌃⇧⌘ — safe default modifier combo that rarely conflicts with system shortcuts
-    static let defaultMods: UInt32 = UInt32(cmdKey) | UInt32(shiftKey) | UInt32(controlKey)
+    /// ⌃⌥⌘ — all three in a line on the keyboard, rarely conflicts with system shortcuts
+    static let defaultMods: UInt32 = UInt32(cmdKey) | UInt32(optionKey) | UInt32(controlKey)
 }
 
 // MARK: - AppConfig
@@ -52,7 +52,7 @@ struct AppConfig: Codable {
     static var `default`: AppConfig {
         let m = HotkeyConfig.defaultMods
         return AppConfig(
-            centerCurrentScreen:  HotkeyConfig(keyCode: 8,   modifiers: m),              // ⌃⇧⌘C
+            centerCurrentScreen:  HotkeyConfig(keyCode: 125, modifiers: m),              // ⌃⌥⌘↓
             moveToNextScreen:     HotkeyConfig(keyCode: 124, modifiers: m),              // ⌃⇧⌘→
             moveToPreviousScreen: HotkeyConfig(keyCode: 123, modifiers: m),              // ⌃⇧⌘←
             moveToScreen1:        HotkeyConfig(keyCode: 18,  modifiers: m),              // ⌃⇧⌘1

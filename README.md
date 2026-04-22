@@ -24,12 +24,12 @@ The app lives entirely in your menu bar (no Dock icon).
 
 | Action | Shortcut |
 |---|---|
-| Center on current screen | `⌃⇧⌘C` |
-| Move to next screen → | `⌃⇧⌘→` |
-| Move to previous screen ← | `⌃⇧⌘←` |
-| Jump to screen 1 | `⌃⇧⌘1` |
-| Jump to screen 2 | `⌃⇧⌘2` |
-| Jump to screen 3 | `⌃⇧⌘3` |
+| Center on current screen | `⌃⌥⌘↓` |
+| Move to next screen → | `⌃⌥⌘→` |
+| Move to previous screen ← | `⌃⌥⌘←` |
+| Jump to screen 1 | `⌃⌥⌘1` |
+| Jump to screen 2 | `⌃⌥⌘2` |
+| Jump to screen 3 | `⌃⌥⌘3` |
 | Jump to screens 4–6 | disabled by default |
 
 ## Customising shortcuts
