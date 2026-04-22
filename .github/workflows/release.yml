@@ -26,8 +26,12 @@ jobs:
           APP=CenterScreen.app
           rm -rf "$APP"
           mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources"
           cp .build/release/CenterScreen "$APP/Contents/MacOS/CenterScreen"
           cp Info.plist "$APP/Contents/Info.plist"
+          if [ -f Resources/AppIcon.icns ]; then
+            cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+          fi
 
           # Zip the .app so GitHub can attach it as a release asset
           ditto -c -k --keepParent "$APP" CenterScreen.zip

@@ -2,3 +2,4 @@
 *.o
 *.d
 CenterScreen.app/
+# Keep Resources/AppIcon.icns tracked

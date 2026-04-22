@@ -23,6 +23,8 @@
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <!-- Required for CGEvent posting (hover state updates) -->
     <key>NSAccessibilityUsageDescription</key>
     <string>CenterScreen needs Accessibility access to update hover states when the cursor is moved between monitors.</string>

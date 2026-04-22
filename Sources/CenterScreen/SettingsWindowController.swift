@@ -8,7 +8,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 560),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -25,25 +25,25 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     override func showWindow(_ sender: Any?) {
         super.showWindow(sender)
         window?.makeKeyAndOrderFront(sender)
-        // Suspend global hotkeys while the settings window is open so the
-        // hotkey recorder can capture key combos without them firing.
+        // Suspend global hotkeys while settings are open so the recorder
+        // can capture key combos without them firing globally.
         HotkeyManager.shared.unregisterAll()
     }
 
     func windowWillClose(_ notification: Notification) {
-        // Persist and re-activate hotkeys when the user closes settings.
         ConfigManager.shared.save()
         HotkeyManager.shared.registerFromConfig()
     }
 }
 
-// MARK: - SettingsView (SwiftUI)
+// MARK: - SettingsView
 
 struct SettingsView: View {
     @ObservedObject private var cfg = ConfigManager.shared
 
     var body: some View {
         VStack(spacing: 0) {
+
             // ── Header ──────────────────────────────────────────────────
             VStack(spacing: 6) {
                 Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
@@ -69,9 +69,9 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     SectionLabel("Navigation")
-                    HotkeyRow(label: "Center on Current Screen", hotkey: $cfg.config.centerCurrentScreen)
-                    HotkeyRow(label: "Move to Next Screen →",    hotkey: $cfg.config.moveToNextScreen)
-                    HotkeyRow(label: "Move to Previous Screen ←",hotkey: $cfg.config.moveToPreviousScreen)
+                    HotkeyRow(label: "Center on Current Screen",  hotkey: $cfg.config.centerCurrentScreen)
+                    HotkeyRow(label: "Move to Next Screen →",     hotkey: $cfg.config.moveToNextScreen)
+                    HotkeyRow(label: "Move to Previous Screen ←", hotkey: $cfg.config.moveToPreviousScreen)
 
                     SectionLabel("Jump to Specific Screen")
                     HotkeyRow(label: "Screen 1", hotkey: $cfg.config.moveToScreen1)
@@ -98,11 +98,11 @@ struct SettingsView: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
         }
-        .frame(width: 500)
+        .frame(width: 520)
     }
 }
 
-// MARK: - Sub-views
+// MARK: - SectionLabel
 
 private struct SectionLabel: View {
     let text: String
@@ -117,6 +117,8 @@ private struct SectionLabel: View {
             .padding(.bottom, 4)
     }
 }
+
+// MARK: - HotkeyRow
 
 private struct HotkeyRow: View {
     let label: String
@@ -134,140 +136,89 @@ private struct HotkeyRow: View {
 
             Spacer()
 
-            HotkeyRecorderView(hotkey: $hotkey)
-                .frame(width: 160, height: 26)
+            HotkeyField(hotkey: $hotkey)
                 .opacity(hotkey.isEnabled ? 1 : 0.4)
                 .allowsHitTesting(hotkey.isEnabled)
         }
         .padding(.horizontal, 24)
-        .padding(.vertical, 5)
+        .padding(.vertical, 6)
     }
 }
 
-// MARK: - HotkeyRecorderView (NSViewRepresentable bridge)
+// MARK: - HotkeyField (pure SwiftUI — no NSViewRepresentable)
 
-struct HotkeyRecorderView: NSViewRepresentable {
+/// Shows the current shortcut and a Record button.
+/// Clicking Record starts a local key-down monitor; the next modifier+key
+/// combo is captured and saved.  Escape cancels without changing anything.
+private struct HotkeyField: View {
     @Binding var hotkey: HotkeyConfig
 
-    func makeNSView(context: Context) -> HotkeyRecorderControl {
-        let control = HotkeyRecorderControl()
-        control.hotkey = hotkey
-        control.onRecorded = { newHotkey in hotkey = newHotkey }
-        return control
-    }
+    @State private var isRecording = false
+    @State private var monitor: Any?
 
-    func updateNSView(_ control: HotkeyRecorderControl, context: Context) {
-        guard !control.isRecording else { return }
-        control.hotkey = hotkey
-        control.refresh()
-    }
-}
+    var body: some View {
+        HStack(spacing: 8) {
+            // Shortcut badge
+            Text(isRecording ? "Press shortcut…" : hotkey.displayString)
+                .font(.system(.body, design: .monospaced))
+                .foregroundColor(isRecording ? .accentColor : .primary)
+                .lineLimit(1)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(
+                            isRecording ? Color.accentColor : Color(nsColor: .separatorColor),
+                            lineWidth: 1
+                        )
+                )
 
-// MARK: - HotkeyRecorderControl (NSView)
-
-final class HotkeyRecorderControl: NSView {
-
-    var hotkey: HotkeyConfig = .init(keyCode: 8, modifiers: HotkeyConfig.defaultMods)
-    var onRecorded: ((HotkeyConfig) -> Void)?
-    private(set) var isRecording = false
-
-    private let label = NSTextField(labelWithString: "")
-    private let button = NSButton()
-    private var monitor: Any?
-
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        buildSubviews()
-    }
-
-    required init?(coder: NSCoder) { fatalError() }
-
-    private func buildSubviews() {
-        label.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
-        label.alignment = .center
-        label.lineBreakMode = .byTruncatingMiddle
-        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        button.title = "Record"
-        button.bezelStyle = .rounded
-        button.controlSize = .small
-        button.target = self
-        button.action = #selector(toggleRecording)
-        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-
-        let stack = NSStackView(views: [label, button])
-        stack.orientation = .horizontal
-        stack.spacing = 6
-        stack.alignment = .centerY
-        stack.distribution = .fill
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
-
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stack.centerYAnchor.constraint(equalTo: centerYAnchor)
-        ])
-
-        refresh()
-    }
-
-    func refresh() {
-        label.stringValue = hotkey.displayString
-    }
-
-    @objc private func toggleRecording() {
-        isRecording ? cancelRecording() : startRecording()
+            // Record / Cancel button
+            Button(isRecording ? "Cancel" : "Record") {
+                isRecording ? stopRecording() : startRecording()
+            }
+            .controlSize(.small)
+        }
+        .onDisappear { stopRecording() }
     }
 
     private func startRecording() {
         isRecording = true
-        button.title = "Cancel"
-        label.stringValue = "Press shortcut…"
-
-        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, self.isRecording else { return event }
-
-            // Escape → cancel without saving
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // Escape cancels without saving
             if event.keyCode == 53 {
-                self.cancelRecording()
+                stopRecording()
                 return nil
             }
 
-            let keyCode = UInt32(event.keyCode)
             var mods: UInt32 = 0
             if event.modifierFlags.contains(.command) { mods |= UInt32(cmdKey) }
             if event.modifierFlags.contains(.shift)   { mods |= UInt32(shiftKey) }
             if event.modifierFlags.contains(.option)  { mods |= UInt32(optionKey) }
             if event.modifierFlags.contains(.control) { mods |= UInt32(controlKey) }
 
-            // Require at least one modifier key alongside the main key
+            // Ignore bare modifier taps — require at least one regular key
             guard mods != 0 else { return nil }
 
-            let recorded = HotkeyConfig(keyCode: keyCode, modifiers: mods,
-                                        isEnabled: self.hotkey.isEnabled)
-            self.hotkey = recorded
-            self.onRecorded?(recorded)
-            self.finishRecording()
-            return nil
+            hotkey = HotkeyConfig(
+                keyCode: UInt32(event.keyCode),
+                modifiers: mods,
+                isEnabled: hotkey.isEnabled
+            )
+            stopRecording()
+            return nil  // consume the event
         }
     }
 
-    private func finishRecording() {
+    private func stopRecording() {
         isRecording = false
-        button.title = "Record"
-        removeMonitor()
-        refresh()
-    }
-
-    private func cancelRecording() {
-        isRecording = false
-        button.title = "Record"
-        removeMonitor()
-        refresh()
-    }
-
-    private func removeMonitor() {
-        if let m = monitor { NSEvent.removeMonitor(m); monitor = nil }
+        if let m = monitor {
+            NSEvent.removeMonitor(m)
+            monitor = nil
+        }
     }
 }
