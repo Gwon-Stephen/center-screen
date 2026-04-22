@@ -19,19 +19,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let button = statusItem?.button {
-            // SF Symbol that suggests cursor/crosshair positioning
             button.image = NSImage(
                 systemSymbolName: "arrow.up.and.down.and.arrow.left.and.right",
                 accessibilityDescription: "CenterScreen"
             )
-            button.image?.isTemplate = true  // adapts to light/dark menu bar
+            button.image?.isTemplate = true
             button.toolTip = "CenterScreen"
         }
 
+        refreshMenu()
+    }
+
+    /// Rebuilds the menu with the current shortcuts from config.
+    /// Called on launch and whenever Settings closes.
+    func refreshMenu() {
         statusItem?.menu = buildMenu()
     }
 
     private func buildMenu() -> NSMenu {
+        let cfg = ConfigManager.shared.config
         let menu = NSMenu()
 
         let title = NSMenuItem(title: "CenterScreen", action: nil, keyEquivalent: "")
@@ -40,33 +46,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        menu.addItem(makeItem("Center on Current Screen",    action: #selector(centerCurrent)))
-        menu.addItem(makeItem("Move to Next Screen →",       action: #selector(moveNext)))
-        menu.addItem(makeItem("Move to Previous Screen ←",  action: #selector(movePrev)))
+        menu.addItem(makeItem(
+            "Center on Current Screen",
+            hint: cfg.centerCurrentScreen,
+            action: #selector(centerCurrent)
+        ))
+        menu.addItem(makeItem(
+            "Move to Next Screen →",
+            hint: cfg.moveToNextScreen,
+            action: #selector(moveNext)
+        ))
+        menu.addItem(makeItem(
+            "Move to Previous Screen ←",
+            hint: cfg.moveToPreviousScreen,
+            action: #selector(movePrev)
+        ))
 
         menu.addItem(.separator())
 
-        // Dynamically list connected screens
         let screensHeader = NSMenuItem(title: "Jump to Screen", action: nil, keyEquivalent: "")
         screensHeader.isEnabled = false
         menu.addItem(screensHeader)
 
+        let screenHotkeys = cfg.perScreenHotkeys
         for (idx, _) in ScreenManager.sortedScreens().enumerated() {
-            let item = makeItem("  Screen \(idx + 1)", action: #selector(jumpToScreen(_:)))
+            let hotkey = idx < screenHotkeys.count ? screenHotkeys[idx] : nil
+            let item = makeItem("  Screen \(idx + 1)", hint: hotkey, action: #selector(jumpToScreen(_:)))
             item.tag = idx
             menu.addItem(item)
         }
 
         menu.addItem(.separator())
-        menu.addItem(makeItem("Settings…",           action: #selector(openSettings),  key: ","))
+        menu.addItem(makeItem("Settings…",         action: #selector(openSettings), key: ","))
         menu.addItem(.separator())
-        menu.addItem(makeItem("Quit CenterScreen",   action: #selector(NSApplication.terminate(_:)), key: "q"))
+        menu.addItem(makeItem("Quit CenterScreen", action: #selector(NSApplication.terminate(_:)), key: "q"))
 
         return menu
     }
 
-    private func makeItem(_ title: String, action: Selector, key: String = "") -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+    /// Creates a menu item with an optional shortcut hint shown on the right side.
+    private func makeItem(
+        _ label: String,
+        hint: HotkeyConfig? = nil,
+        action: Selector,
+        key: String = ""
+    ) -> NSMenuItem {
+        var displayTitle = label
+        if let hint, hint.isEnabled {
+            // Pad with spaces so the shortcut aligns to the right
+            displayTitle = "\(label)   \(hint.displayString)"
+        }
+        let item = NSMenuItem(title: displayTitle, action: action, keyEquivalent: key)
         item.target = self
         return item
     }
@@ -104,9 +134,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Accessibility
 
     private func checkAccessibilityPermission() {
-        // CGWarpMouseCursorPosition works without accessibility, but the
-        // synthetic mouseMoved event we post for hover-state updates needs it.
-        // Show the system prompt once so the user can grant permission.
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         let opts = [key: true] as CFDictionary
         AXIsProcessTrustedWithOptions(opts)

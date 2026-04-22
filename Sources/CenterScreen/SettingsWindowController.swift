@@ -33,6 +33,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         ConfigManager.shared.save()
         HotkeyManager.shared.registerFromConfig()
+        (NSApp.delegate as? AppDelegate)?.refreshMenu()
     }
 }
 

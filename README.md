@@ -14,8 +14,12 @@ Go to the [**Releases**](../../releases/latest) page and download `CenterScreen.
 
 1. Unzip `CenterScreen.zip`
 2. Move `CenterScreen.app` to your **Applications** folder
-3. **Right-click → Open** the first time (the app is unsigned, so Gatekeeper will block a normal double-click)
-4. Grant **Accessibility permission** when prompted — System Settings → Privacy & Security → Accessibility
+3. Open **Terminal** and run:
+   ```bash
+   xattr -cr /Applications/CenterScreen.app
+   ```
+   macOS flags apps downloaded from the internet as quarantined. This command removes that flag — it's a one-time step since the app isn't signed with an Apple Developer certificate.
+4. Open the app — grant **Accessibility permission** when prompted (System Settings → Privacy & Security → Accessibility)
 5. *(Optional)* Add CenterScreen to **System Settings → General → Login Items** to launch it at startup
 
 The app lives entirely in your menu bar (no Dock icon).
@@ -40,16 +44,26 @@ Each action has a toggle (enable/disable) and a **Record** button. Click Record,
 
 ## Building from source
 
-Requires Swift (comes with Xcode or the Command Line Tools).
+**1. Install dependencies**
+
+You only need the Xcode Command Line Tools — this gives you Swift, `make`, `git`, and everything else required. Run this in Terminal:
+
+```bash
+xcode-select --install
+```
+
+A dialog will pop up asking you to install. It takes a few minutes. If you already have Xcode or the tools installed, this command will tell you so and you can skip it.
+
+**2. Clone and run**
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/center-screen.git
 cd center-screen
 
-# Run directly
+# Run directly (stays open while Terminal is open)
 make run
 
-# Build and install to ~/Applications
+# Or build and install to ~/Applications
 make install
 ```
 

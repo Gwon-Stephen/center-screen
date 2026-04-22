@@ -36,6 +36,10 @@ jobs:
             cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
           fi
 
+          # Ad-hoc sign the bundle so macOS treats it as structurally valid.
+          # Users still need to run `xattr -cr` once since the app is not notarized.
+          codesign --deep --force --sign - "$APP"
+
           # Zip the .app so GitHub can attach it as a release asset
           ditto -c -k --keepParent "$APP" CenterScreen.zip
 
@@ -48,10 +52,18 @@ jobs:
 
             > **macOS 13 Ventura or later required.**
 
-            1. Download **CenterScreen.zip** below and unzip it.
-            2. Move **CenterScreen.app** to your `Applications` folder.
-            3. **Right-click → Open** the first time (bypasses Gatekeeper since the app is unsigned).
-            4. Grant **Accessibility permission** when prompted (System Settings → Privacy & Security → Accessibility). This lets the app update hover states after moving your cursor.
+            1. Download **CenterScreen.zip** below, unzip it, and move `CenterScreen.app` to your `/Applications` folder.
+
+            2. Open **Terminal** and run:
+               ```bash
+               xattr -cr /Applications/CenterScreen.app
+               ```
+               This removes the quarantine flag macOS adds to downloaded apps. Without it, macOS will show a "damaged" error because the app is not notarized with an Apple Developer certificate.
+
+            3. Open the app normally (double-click).
+
+            4. Grant **Accessibility permission** when prompted — System Settings → Privacy & Security → Accessibility.
+
             5. *(Optional)* Add CenterScreen to **System Settings → General → Login Items** so it starts automatically.
 
             ## Default shortcuts
